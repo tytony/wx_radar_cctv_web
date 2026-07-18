@@ -16,6 +16,9 @@ cd docs && python3 -m http.server 8000  # 瀏覽器開 http://localhost:8000
 # 重新產生 CCTV 清單(來源 RData 變動時才需要,非 CI 流程)
 Rscript scripts/export_cctv.R                                  # 預設讀 /home/tytony/shiny-local/apps/WX_Monitor
 WX_MONITOR_SRC=/path/to/WX_Monitor Rscript scripts/export_cctv.R
+
+# 重新產生行政區界(邊界幾乎不變,非 CI 流程)
+python3 scripts/simplify_boundaries.py                         # 下載 g0v geojson,量化簡化後輸出 docs/data/tw_{county,town}.geojson
 ```
 
 沒有 build / lint / test 步驟——前端是手寫 JS,vendor 函式庫(Leaflet、markercluster)已 commit 進 `docs/vendor/`。
@@ -27,6 +30,8 @@ WX_MONITOR_SRC=/path/to/WX_Monitor Rscript scripts/export_cctv.R
 1. **雷達(每 10 分鐘,CI 自動)** — `scripts/fetch_radar.py` 由 `.github/workflows/deploy.yml` 的 cron 執行,在伺服器端抓 CWA QPlus 原始格點、解碼、上色成透明底 RGBA PNG,連同 `docs/` 一起部署到 Pages。前端 `app.js` 每 3 分鐘輪詢 `radar/latest.json`,以 `L.imageOverlay` 疊圖。`docs/radar/latest.*` 是產物,**不進 git**(見 `.gitignore`),每次部署由 CI 重建。
 
 2. **CCTV 清單(幾乎不變,手動)** — `scripts/export_cctv.R` 一次性從 WX_Monitor 專案的 RData 匯出 `docs/data/cctv.json`(**已 commit**)。跑完後 self-contained,CI 完全不碰 R,也不需要存取 WX_Monitor。
+
+3. **行政區界(幾乎不變,手動)** — `scripts/simplify_boundaries.py` 下載 g0v/twgeojson 的縣市(2010)、鄉鎮(1982)邊界,經**座標量化 + Douglas-Peucker** 簡化(原檔 9MB/20MB → 約 0.2MB/0.7MB),輸出 `docs/data/tw_county.geojson`、`docs/data/tw_town.geojson`(**已 commit**)。前端 `loadBoundaries()` 以 `L.geoJSON` 疊為可切換圖層(縣市界預設開、鄉鎮界預設關,僅描邊不填色、`interactive:false` 不攔點擊)。簡化用量化(非拓樸簡化)以確保相鄰多邊形共用頂點重合、不出縫隙。
 
 **為何雷達要繞道 CI 而非前端直抓:** 氣象署格點與官網回波圖都沒有 CORS 標頭,瀏覽器無法 `fetch`/讀像素。改由 Actions 伺服器端渲染成 PNG。CCTV 串流走 `<img>`/`<iframe>`,不受 CORS 限制,故可留在前端。
 

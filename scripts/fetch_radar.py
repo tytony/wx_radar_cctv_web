@@ -38,6 +38,10 @@ RAD_COL = ["#00FF41", "#30E80C", "#5DC700", "#FAF100", "#FFD200",
            "#D064FF", "#E6A1FF"]
 DBZ_MIN, DBZ_MAX = 14.9, 69.9
 
+# 原始格點為 0.01°(約 1501x1501),前端疊圖放大後邊緣呈方塊狀。
+# 在伺服器端以雙線性內插超取樣,讓回波邊緣平滑、視覺解析度提升(檔案仍以 PNG 壓縮)。
+UPSCALE = 3
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(REPO, "docs", "radar")
 
@@ -122,6 +126,30 @@ def build_lut(levels=1024):
     return lut
 
 
+def upscale_field(mat, factor):
+    """以雙線性內插把 dBZ 格點放大 factor 倍;無回波(NaN)區域用 mask 還原成透明。
+
+    直接對上色後的 RGBA 放大會讓透明(黑)像素滲入邊緣造成暗邊,故改在數值場放大:
+      - 值場:NaN 先填 DBZ_MIN 再雙線性放大(邊緣自然收斂到最低色)
+      - 遮罩:isfinite 放大後以 0.5 為界重建有效區
+    """
+    if factor <= 1:
+        return mat
+    h, w = mat.shape
+    finite = np.isfinite(mat)
+    filled = np.where(finite, mat, DBZ_MIN).astype(np.float32)
+    size = (w * factor, h * factor)
+    hi = np.asarray(
+        Image.fromarray(filled, mode="F").resize(size, Image.BILINEAR),
+        dtype=np.float64,
+    )
+    himask = np.asarray(
+        Image.fromarray((finite * 255).astype(np.uint8), mode="L").resize(size, Image.BILINEAR)
+    ) >= 128
+    hi[~himask] = np.nan
+    return hi
+
+
 def colorize(mat):
     """把 dBZ 陣列上色成 RGBA;<14.9 或 NaN → 透明。"""
     levels = 1024
@@ -152,6 +180,7 @@ def main():
           "dBZ range:", np.nanmin(mat) if np.isfinite(mat).any() else None,
           "~", np.nanmax(mat) if np.isfinite(mat).any() else None, flush=True)
 
+    mat = upscale_field(mat, UPSCALE)
     rgba = colorize(mat)
     png_path = os.path.join(OUT_DIR, "latest.png")
     Image.fromarray(rgba, "RGBA").save(png_path, optimize=True)

@@ -3,6 +3,7 @@
  *   - 底圖：CartoDB Positron(預設)/ Esri WorldStreetMap / OSM,可切換
  *   - 雷達：docs/radar/latest.{png,json}(由 GitHub Actions 每 10 分產生),imageOverlay
  *   - CCTV：docs/data/cctv.json(國道省道 + 8 縣市),markercluster
+ *   - 行政區界：docs/data/tw_{county,town}.geojson(縣市界 / 鄉鎮界),可切換
  * ============================================================================= */
 "use strict";
 
@@ -101,13 +102,12 @@ function popupHtml(c) {
    if (c.embed === "iframe") {
       // 政府 viewer 頁(台北/新北):可能被 X-Frame-Options 擋,故同時附上另開連結
       return `<h4><a href="${escapeHtml(url)}" target="_blank" rel="noopener">${name} ↗</a></h4>`
-           + `<iframe src="${escapeHtml(url)}" width="400" height="300" loading="lazy"`
+           + `<iframe src="${escapeHtml(url)}" height="320" loading="lazy"`
            + ` referrerpolicy="no-referrer"></iframe>`;
    }
-   const w = c.type === "highway" ? 330 : 400;
-   // MJPEG/JPEG 串流,以 <img> 呈現(瀏覽器自動更新)
+   // MJPEG/JPEG 串流,以 <img> 呈現(瀏覽器自動更新);寬度交由 CSS 撐滿 popup(450px)
    return `<h4><a href="${escapeHtml(url)}" target="_blank" rel="noopener">${name} ↗</a></h4>`
-        + `<img src="${escapeHtml(url)}" width="${w}" referrerpolicy="no-referrer"`
+        + `<img src="${escapeHtml(url)}" referrerpolicy="no-referrer"`
         + ` alt="CCTV 影像載入中…" onerror="this.alt='此攝影機影像無法載入(來源限制)';">`;
 }
 
@@ -136,7 +136,7 @@ async function loadCCTV() {
       if (!isFinite(c.lat) || !isFinite(c.lon)) continue;
       const m = L.marker([c.lat, c.lon], { icon: cctvIcon, title: c.name });
       // popup 內容延遲產生(點擊時才建 iframe/img,避免同時開數千串流)
-      m.bindPopup(() => popupHtml(c), { minWidth: 340, maxHeight: 340 });
+      m.bindPopup(() => popupHtml(c), { minWidth: 450, maxWidth: 450, maxHeight: 380 });
       if (c.type === "highway") { highwayGroup.addLayer(m); nHw++; }
       else { countyGroup.addLayer(m); nCt++; }
    }
@@ -146,6 +146,30 @@ async function loadCCTV() {
    overlaysCtl.addOverlay(highwayGroup, `國道/省道 CCTV (${nHw})`);
    overlaysCtl.addOverlay(countyGroup, `縣市 CCTV (${nCt})`);
    console.log(`CCTV 載入完成：國道省道 ${nHw}、縣市 ${nCt}`);
+}
+
+// -----------------------------------------------------------------------------
+// 行政區界(縣市 / 鄉鎮)— 輕量化 GeoJSON,僅畫邊界不填色,可於圖層控制切換
+//   資料源:g0v/twgeojson,經 scripts 量化 + Douglas-Peucker 簡化
+// -----------------------------------------------------------------------------
+async function loadBoundaries() {
+   // 只描邊、不攔截點擊(讓 CCTV marker / 地圖仍可互動)
+   const base = { fill: false, interactive: false };
+
+   async function addLayer(url, style, label, show) {
+      try {
+         const gj = await fetch(url, { cache: "force-cache" }).then(r => r.json());
+         const layer = L.geoJSON(gj, { style: { ...base, ...style }, pane: "overlayPane" });
+         overlaysCtl.addOverlay(layer, label);
+         if (show) layer.addTo(map);
+      } catch (e) {
+         console.error(`行政區界載入失敗：${label}`, e);
+      }
+   }
+
+   // 鄉鎮界先畫(細灰、預設關),縣市界後畫在上層(較粗深、預設開)
+   await addLayer("data/tw_town.geojson",   { color: "#777", weight: 0.5, opacity: 0.7 }, "鄉鎮界", false);
+   await addLayer("data/tw_county.geojson", { color: "#333", weight: 1.2, opacity: 0.8 }, "縣市界", true);
 }
 
 // -----------------------------------------------------------------------------
@@ -173,6 +197,7 @@ function buildLegend() {
 const overlaysCtl = L.control.layers(baseLayers, {}, { collapsed: false }).addTo(map);
 
 buildLegend();
+loadBoundaries();
 refreshRadar();
 setInterval(refreshRadar, RADAR_POLL_MS);
 loadCCTV();

@@ -66,9 +66,14 @@ html, body {
    font-size: 14px;
 }
 
+.leaflet-popup-content {
+   width: 450px !important;   /* 固定 popup 內容寬度,避免 CCTV 影像出框 */
+}
+
 .leaflet-popup-content img,
 .leaflet-popup-content iframe {
    display: block;
+   width: 100%;              /* 撐滿 popup,不超出邊框 */
    border: 0;
    background: #000;
 }
