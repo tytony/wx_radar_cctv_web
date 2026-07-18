@@ -150,6 +150,34 @@ def upscale_field(mat, factor):
     return hi
 
 
+def _merc_y(lat_deg):
+    lat = np.radians(lat_deg)
+    return np.log(np.tan(np.pi / 4 + lat / 2))
+
+
+def mercator_warp_rows(mat, s, n):
+    """把緯度方向從「等經緯度間距」重新取樣成「等 Web Mercator Y 間距」。
+
+    前端 L.imageOverlay 只用兩角點座標線性拉伸圖片(不做逐像素重投影),
+    但地圖底圖是 Web Mercator——緯度愈高,同樣的緯度間距在地圖上愈長。
+    我們的網格橫跨 16~31°N(15 度),若直接輸出等緯度間距的圖,
+    拉伸到地圖上會在台灣緯度(~23°N)一帶造成約 20 公里的偏北視覺誤差
+    (等同 R leaflet::addRasterImage() 內部會重投影到 EPSG:3857 再輸出,
+    這裡改在伺服器端手動做等效的列重取樣)。
+    """
+    h, w = mat.shape
+    y_n, y_s = _merc_y(n), _merc_y(s)
+    t = np.arange(h) / (h - 1)
+    y_target = y_n - t * (y_n - y_s)                       # 頂(北)→底(南),等 Mercator-Y 間距
+    lat_target = np.degrees(2 * np.arctan(np.exp(y_target)) - np.pi / 2)
+    row_src = (n - lat_target) / (n - s) * (h - 1)          # 對應回原本等緯度間距的來源列(浮點)
+    row_src = np.clip(row_src, 0, h - 1)
+    idx0 = np.floor(row_src).astype(np.int64)
+    idx1 = np.clip(idx0 + 1, 0, h - 1)
+    frac = (row_src - idx0)[:, None]
+    return mat[idx0, :] * (1 - frac) + mat[idx1, :] * frac
+
+
 def colorize(mat):
     """把 dBZ 陣列上色成 RGBA;<14.9 或 NaN → 透明。"""
     levels = 1024
@@ -181,6 +209,7 @@ def main():
           "~", np.nanmax(mat) if np.isfinite(mat).any() else None, flush=True)
 
     mat = upscale_field(mat, UPSCALE)
+    mat = mercator_warp_rows(mat, EXTENT["s"], EXTENT["n"])
     rgba = colorize(mat)
     png_path = os.path.join(OUT_DIR, "latest.png")
     Image.fromarray(rgba, "RGBA").save(png_path, optimize=True)

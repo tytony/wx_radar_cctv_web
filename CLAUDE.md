@@ -42,6 +42,7 @@ python3 scripts/simplify_boundaries.py                         # 下載 g0v geoj
 
 ## 修改時的注意事項
 
+- **雷達疊圖需 Web Mercator 列重取樣,勿移除:** `fetch_radar.py` 的 `mercator_warp_rows()` 把等經緯度間距的格點,重新取樣成等 Web Mercator Y 間距。原因:前端 `L.imageOverlay` 只用兩角點座標線性拉伸圖片、不做逐像素重投影,但底圖是 Web Mercator——網格橫跨 16~31°N(15 度緯度跨距很大),若直接輸出等緯度間距的圖,拉伸到地圖上會在台灣緯度(~23°N)一帶造成約 20~24 公里的偏北視覺誤差(緯度愈高、同樣的緯度間距在 Mercator 地圖上愈長)。R 版 WX_Monitor 用 `leaflet::addRasterImage()` 沒有這個問題,因為該函式內部會把 raster 重投影到 EPSG:3857 再輸出;純前端 JS 沒有對應機制,故改在伺服器端手動做等效重取樣。經 R 端 `t()+flip` 解碼、方位邏輯逐 element 比對驗證兩者一致後才定位出此 bug(不在解碼/翻轉,而在最後的疊圖投影)。
 - **CCTV URL 一律 http→https:** `export_cctv.R` 尾段把所有 `.gov.tw` 的 http 升成 https,因為站台跑在 https、混合內容會被瀏覽器擋。新增來源時沿用此規則。
 - **iframe vs img:** 台北/新北是政府 viewer 頁,`embed: "iframe"`(可能被 `X-Frame-Options` 擋,故 popup 另附開新視窗連結);其餘是 MJPEG/JPEG 串流,`embed: "img"`。此欄位由 `export_cctv.R` 決定,`app.js` 的 `popupHtml()` 據此分流。
 - **CCTV popup 延遲產生:** marker 用 `bindPopup(() => popupHtml(c))`,點擊才建 iframe/img,避免同時開數千串流。勿改成預先產生。
