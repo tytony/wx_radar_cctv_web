@@ -20,21 +20,21 @@ html, body {
    color: #222;
 }
 
-/* 雷達資料時間 — 右上 */
-#radar-time {
-   position: absolute;
-   top: 10px;
-   right: 10px;
-   z-index: 1000;
-   font-weight: 600;
-}
-
-/* dBZ 圖例 — 左下 */
-#legend {
+/* 左下角:雷達色階在上、雷達時間在下 */
+#bottom-left {
    position: absolute;
    bottom: 24px;
    left: 10px;
    z-index: 1000;
+   display: flex;
+   flex-direction: column;
+   align-items: flex-start;
+   gap: 6px;
+}
+
+/* 雷達資料時間 — 色階下方 */
+#radar-time {
+   font-weight: 600;
 }
 
 .legend-title {

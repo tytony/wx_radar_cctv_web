@@ -1,6 +1,6 @@
 /* =============================================================================
  * 雷達回波 + CCTV 即時影像  前端主程式
- *   - 底圖：OSM
+ *   - 底圖：CartoDB Positron(預設)/ Esri WorldStreetMap / OSM,可切換
  *   - 雷達：docs/radar/latest.{png,json}(由 GitHub Actions 每 10 分產生),imageOverlay
  *   - CCTV：docs/data/cctv.json(國道省道 + 8 縣市),markercluster
  * ============================================================================= */
@@ -16,12 +16,36 @@ const RADAR_POLL_MS = 3 * 60 * 1000; // 每 3 分鐘輪詢
 // -----------------------------------------------------------------------------
 // 地圖
 // -----------------------------------------------------------------------------
-const map = L.map("map", { preferCanvas: true }).setView([23.7, 121.0], 7);
+const ATTR_SRC = '雷達 &amp; CCTV：中央氣象署 / TDX / 各縣市政府';
+// 顯示範圍限定 110~130E、15~30N;zoom 不小於 7
+const MAP_BOUNDS = L.latLngBounds([15, 110], [30, 130]);
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-   maxZoom: 19,
-   attribution: '&copy; OpenStreetMap contributors｜雷達 &amp; CCTV：中央氣象署 / TDX / 各縣市政府',
-}).addTo(map);
+const map = L.map("map", {
+   preferCanvas: true,
+   minZoom: 7,
+   maxBounds: MAP_BOUNDS,
+   maxBoundsViscosity: 1.0,
+}).setView([23.7, 121.0], 7);
+
+const baseLayers = {
+   "CartoDB Positron": L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+         maxZoom: 19,
+         subdomains: "abcd",
+         attribution: '&copy; OpenStreetMap contributors &copy; CARTO｜' + ATTR_SRC,
+      }),
+   "Esri WorldStreetMap": L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+         maxZoom: 19,
+         attribution: 'Tiles &copy; Esri｜' + ATTR_SRC,
+      }),
+   "OpenStreetMap": L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+         maxZoom: 19,
+         attribution: '&copy; OpenStreetMap contributors｜' + ATTR_SRC,
+      }),
+};
+baseLayers["CartoDB Positron"].addTo(map); // 預設底圖
 
 // -----------------------------------------------------------------------------
 // 雷達 imageOverlay + 輪詢更新
@@ -146,7 +170,7 @@ function buildLegend() {
 // -----------------------------------------------------------------------------
 // 圖層控制 + 啟動
 // -----------------------------------------------------------------------------
-const overlaysCtl = L.control.layers(null, {}, { collapsed: false }).addTo(map);
+const overlaysCtl = L.control.layers(baseLayers, {}, { collapsed: false }).addTo(map);
 
 buildLegend();
 refreshRadar();
