@@ -1,0 +1,78 @@
+html, body {
+   margin: 0;
+   padding: 0;
+   height: 100%;
+   font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+}
+
+#map {
+   position: absolute;
+   inset: 0;
+}
+
+.info-box {
+   background: rgba(255, 255, 255, 0.92);
+   padding: 6px 10px;
+   border-radius: 6px;
+   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+   font-size: 13px;
+   line-height: 1.4;
+   color: #222;
+}
+
+/* 雷達資料時間 — 右上 */
+#radar-time {
+   position: absolute;
+   top: 10px;
+   right: 10px;
+   z-index: 1000;
+   font-weight: 600;
+}
+
+/* dBZ 圖例 — 左下 */
+#legend {
+   position: absolute;
+   bottom: 24px;
+   left: 10px;
+   z-index: 1000;
+}
+
+.legend-title {
+   font-weight: 700;
+   margin-bottom: 4px;
+   text-align: center;
+}
+
+.legend-row {
+   display: flex;
+   align-items: center;
+   height: 15px;
+}
+
+.legend-swatch {
+   width: 22px;
+   height: 15px;
+   margin-right: 6px;
+   opacity: 0.85;
+}
+
+.legend-label {
+   font-size: 12px;
+}
+
+/* CCTV popup */
+.leaflet-popup-content h4 {
+   margin: 2px 0 6px;
+   font-size: 14px;
+}
+
+.leaflet-popup-content img,
+.leaflet-popup-content iframe {
+   display: block;
+   border: 0;
+   background: #000;
+}
+
+.cctv-icon {
+   /* 自訂 marker icon 由 JS 指定,這裡僅保留占位 */
+}

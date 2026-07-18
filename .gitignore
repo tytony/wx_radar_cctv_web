@@ -1,0 +1,9 @@
+# 雷達 overlay 由 GitHub Actions 於部署時產生,不進 git 歷史
+docs/radar/latest.png
+docs/radar/latest.json
+
+# 本機測試環境
+venv/
+__pycache__/
+*.pyc
+.DS_Store

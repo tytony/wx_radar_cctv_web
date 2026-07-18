@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+   <meta charset="utf-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>雷達回波 + CCTV 即時影像</title>
+   <link rel="stylesheet" href="vendor/leaflet.css">
+   <link rel="stylesheet" href="vendor/MarkerCluster.css">
+   <link rel="stylesheet" href="vendor/MarkerCluster.Default.css">
+   <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+   <div id="map"></div>
+
+   <div id="radar-time" class="info-box">雷達時間：載入中…</div>
+
+   <div id="legend" class="info-box">
+      <div class="legend-title">回波 dBZ</div>
+      <div id="legend-body"></div>
+   </div>
+
+   <script src="vendor/leaflet.js"></script>
+   <script src="vendor/markercluster.js"></script>
+   <script src="js/app.js"></script>
+</body>
+</html>
